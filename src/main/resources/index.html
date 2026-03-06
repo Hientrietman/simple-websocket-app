@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Chat WebSocket</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #chatBox {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        #chatBox div {
+            margin-bottom: 5px;
+        }
+        #chatBox .client {
+            color: blue;
+        }
+        #chatBox .server {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+<h1>Mini Chat WebSocket</h1>
+<button id="toggleBtn">Kết nối</button>
+<div id="chatBox"></div>
+<input type="text" id="msgInput" placeholder="Nhập tin nhắn..." disabled>
+<button id="sendBtn" disabled>Gửi</button>
+
+<script>
+    let ws = null;
+
+    const toggleBtn = document.getElementById('toggleBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const msgInput = document.getElementById('msgInput');
+    const chatBox = document.getElementById('chatBox');
+
+    function addMessage(msg, type) {
+        const div = document.createElement('div');
+        div.textContent = msg;
+        div.className = type; // client / server
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight; // auto scroll
+    }
+
+    // Toggle connection
+    toggleBtn.addEventListener('click', () => {
+        if (!ws || ws.readyState === WebSocket.CLOSED) {
+            ws = new WebSocket('ws://localhost:8080/ws'); // chỉnh URL nếu cần
+
+            ws.onopen = () => {
+                console.log('✅ Connected');
+                toggleBtn.textContent = 'Ngắt kết nối';
+                sendBtn.disabled = false;
+                msgInput.disabled = false;
+            };
+
+            ws.onmessage = (event) => {
+                console.log('📩 Received:', event.data);
+                addMessage(event.data, 'server');
+            };
+
+            ws.onclose = () => {
+                console.log('❌ Disconnected');
+                toggleBtn.textContent = 'Kết nối';
+                sendBtn.disabled = true;
+                msgInput.disabled = true;
+            };
+
+            ws.onerror = (err) => {
+                console.error('⚠ WebSocket error', err);
+            };
+        } else {
+            ws.close();
+        }
+    });
+
+    // Gửi message
+    sendBtn.addEventListener('click', () => {
+        sendMessage();
+    });
+
+    // Enter key gửi message
+    msgInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    function sendMessage() {
+        const msg = msgInput.value.trim();
+        if (!msg || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+        // Gửi message dạng JSON theo domain "test"
+        const message = JSON.stringify({
+            domain: "test",
+            action: "printSession",
+            text: msg
+        });
+        ws.send(message);
+        addMessage(msg, 'client'); // hiển thị trong chatBox
+        msgInput.value = '';
+    }
+</script>
+</body>
+</html>
